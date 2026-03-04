@@ -38,7 +38,7 @@ static ssize_t nulldump_write(struct file *file, const char __user *buffer,
 		       current->pid, current->comm, length);	
 	
 	while (length_cp > 0) {
-		size_t chunk_length = (length_cp > 1023) ? 1024 : length % 1024;
+		size_t chunk_length = (length_cp > 1023) ? 1024 : length_cp % 1024;
 		kernel_buffer = kmalloc(chunk_length, GFP_KERNEL);
 		if (!kernel_buffer)
 		{
