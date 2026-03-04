@@ -32,28 +32,34 @@ static ssize_t nulldump_write(struct file *file, const char __user *buffer,
 {
 	char *kernel_buffer;
 	size_t bytes_not_copied;
+	size_t length_cp = length;
 
 	pr_info("nulldump: write attempt by process %d (%s), %zu bytes\n",
 		       current->pid, current->comm, length);	
+	
+	while (length_cp > 0) {
+		size_t chunk_length = (length_cp > 1023) ? 1024 : length % 1024;
+		kernel_buffer = kmalloc(chunk_length, GFP_KERNEL);
+		if (!kernel_buffer)
+		{
+			pr_err("nulldump: kmalloc failed\n");
+			return -ENOMEM;
+		}
 
-	kernel_buffer = kmalloc(length, GFP_KERNEL);
-	if (!kernel_buffer)
-	{
-		pr_err("nulldump: kmalloc failed\n");
-		return -ENOMEM;
-	}
+		bytes_not_copied = copy_from_user(kernel_buffer, buffer, chunk_length);
+		if (bytes_not_copied > 0) {
+			pr_warn("nulldump: failed to copy %zu bytes from user\n",
+					bytes_not_copied);
+			kfree(kernel_buffer);
+			return -EFAULT;
+		}
 
-	bytes_not_copied = copy_from_user(kernel_buffer, buffer, length);
-	if (bytes_not_copied > 0) {
-		pr_warn("nulldump: failed to copy %zu bytes from user\n",
-				bytes_not_copied);
+		print_hex_dump(KERN_INFO, "nulldump: ", DUMP_PREFIX_OFFSET, 16, 1, kernel_buffer, chunk_length, false);
+
 		kfree(kernel_buffer);
-		return -EFAULT;
+		
+		length_cp -= chunk_length;
 	}
-
-	print_hex_dump(KERN_INFO, "nulldump: ", DUMP_PREFIX_OFFSET, 16, 1,  kernel_buffer, length, false);
-
-	kfree(kernel_buffer);
 
 	return length;
 }
