@@ -18,43 +18,6 @@ static struct cdev chrdev_cdev;
 static struct class *chrdev_class;
 static struct device *sdev;
 
-static void my_print_hex_dump(const char *data, size_t len)
-{
-	char *buf;
-	size_t i;
-	int offset = 0;
-
-	if (len == 0)
-	{
-		pr_info("nulldump: empty data\n");
-		return;
-	}
-
-	buf = kmalloc(256, GFP_KERNEL);
-	if (!buf)
-		return;
-
-	pr_info("nulldump: hex dump of %zu bytes:\n", len);
-
-	for (int i = 0; i < len; i++) {
-		if (i % 16 == 0) {
-			if (i > 0) {
-				buf[offset] = '\0';
-				pr_info("%s", buf);
-				offset = 0;
-			}
-			offset += snprintf(buf + offset, 256 - offset, "  %04zx: ", i);
-		}
-		offset += snprintf(buf + offset, 256 - offset, "%02x ", (unsigned char)data[i]);
-	}
-
-	if (offset > 0) {
-		buf[offset] = '\0';
-		pr_info("%s", buf);
-	}
-
-	kfree(buf);
-}
 
 static ssize_t nulldump_read(struct file *file, char __user *buffer, 
                              size_t length, loff_t *offset)
@@ -88,7 +51,7 @@ static ssize_t nulldump_write(struct file *file, const char __user *buffer,
 		return -EFAULT;
 	}
 
-	my_print_hex_dump(kernel_buffer, length);
+	print_hex_dump(KERN_INFO, "nulldump: ", DUMP_PREFIX_OFFSET, 16, 1,  kernel_buffer, length, false);
 
 	kfree(kernel_buffer);
 
